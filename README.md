@@ -43,17 +43,84 @@ bc%>%show()
 
 ## 3. 데이터 전처리
 
-유방암 데이터를 불러온 후, 결측값 처리, 이상값 처리를 수행합니다. 데이터의 구조를 확인하고 필요한 변수를 팩터(factor)로 변환합니다.
+유방암 데이터를 불러온 후, 결측값 처리, 이상값 처리 등을 수행합니다. 데이터의 구조를 확인하고 필요한 변수를 팩터(factor)로 변환합니다. 
 
-우선, 불러온 데이터를 살펴보기 위해 summary, str(데이터 형태 확인), table(결측값 확인) 함수를 수행해보고 boxplot(이상값 확인)를 통해 시각화 해보겠습니다.
+### 3-1. 이상값 처리
+결측값은 없습니다. 정수 데이터 변수의 이상값을 NA처리한 후 삭제하겠습니다.
 
 ```
-str(bc)
-bc%>%summary()
+# 이상치 및 결측값 처리 함수
+calculate_outliers <- function(data, column_name) {
+  iqr_value <- IQR(data[[column_name]])
+  upper_limit <- summary(data[[column_name]])[5] + 1.5 * iqr_value
+  lower_limit <- summary(data[[column_name]])[2] - 1.5 * iqr_value
+
+  data[[column_name]] <- ifelse(data[[column_name]] < lower_limit | data[[column_name]] > upper_limit, NA, data[[column_name]])
+
+  return(data)
+}
+table(is.na(bc))
+bc_<-select(bc,-diagnosis)#char형 변수를 제외하고 정수형 변수만을 저장한 bc_를 통해 boxplot
+boxplot(bc_)
+# 이상치 및 결측값 처리 및 결과에 대한 상자그림 그리기
+bc <- calculate_outliers(bc, "radius_mean")
+bc <- calculate_outliers(bc, "texture_mean")
+bc <- calculate_outliers(bc, "perimeter_mean")
+bc <- calculate_outliers(bc, "area_mean")
+bc <- calculate_outliers(bc, "smoothness_mean")
+bc <- calculate_outliers(bc, "compactness_mean")
+bc <- calculate_outliers(bc, "concavity_mean")
+bc <- calculate_outliers(bc, "concave points_mean")
+bc <- calculate_outliers(bc, "symmetry_mean")
+bc <- calculate_outliers(bc, "fractal_dimension_mean")
+bc <- calculate_outliers(bc, "radius_se")
+bc <- calculate_outliers(bc, "texture_se")
+bc <- calculate_outliers(bc, "perimeter_se")
+bc <- calculate_outliers(bc, "area_se")
+bc <- calculate_outliers(bc, "smoothness_se")
+bc <- calculate_outliers(bc, "compactness_se")
+bc <- calculate_outliers(bc, "concavity_se")
+bc <- calculate_outliers(bc, "concave points_se")
+bc <- calculate_outliers(bc, "symmetry_se")
+bc <- calculate_outliers(bc, "fractal_dimension_se")
+bc <- calculate_outliers(bc, "texture_worst")
+bc <- calculate_outliers(bc, "perimeter_worst")
+bc <- calculate_outliers(bc, "area_worst")
+bc <- calculate_outliers(bc, "smoothness_worst")
+bc <- calculate_outliers(bc, "compactness_worst")
+bc <- calculate_outliers(bc, "concavity_worst")
+bc <- calculate_outliers(bc, "concave points_worst")
+bc <- calculate_outliers(bc, "symmetry_worst")
+bc <- calculate_outliers(bc, "fractal_dimension_worst")
+
+
+table(is.na(bc))
+bc <- na.omit(bc)
 table(is.na(bc))
 bc_<-select(bc,-diagnosis)#char형 변수를 제외하고 정수형 변수만을 저장한 bc_를 통해 boxplot
 #을 그려보겠습니다.
 boxplot(bc_)
+```
+
+```
+FALSE 
+17639 
+
+FALSE  TRUE 
+17048   591 
+
+FALSE 
+12338 
+```
+<img src="https://github.com/auspicious0/BreastCancer/assets/108572025/74de1ce1-26ef-4e04-9e7a-5e51c7ad5b09.png" width="400" height="400"/>
+<img src="https://github.com/auspicious0/BreastCancer/assets/108572025/4e5dc4e0-e218-4018-9609-751adbd06f34.png" width="400" height="400"/>
+
+### 3-2. 데이터 변수의 형 변환 및 삭제
+진단(diagnosis) 데이터를 살펴보면 chr형 변수입니다. 하지만 M(악성),F(양성) 두개의 값만을 갖는 것을 확인할 수 있습니다. 따라서 해당 변수를 Factor 형 변수로 변환하겠습니다. 또 id(참여자 주민번호) 변수와 V33(결측값으로 이루어진 변수) 변수를 삭제하겠씁니다.
+
+```
+str(bc)
+bc%>%summary()
 ```
 
 ```
@@ -151,446 +218,373 @@ tibble [569 × 33] (S3: tbl_df/tbl/data.frame)
    V33         
  Mode:logical  
  NA's:569      
-               
-               
-               
-               
-
-FALSE  TRUE 
-18208   569
-
-![image](https://github.com/auspicious0/BreastCancer/assets/108572025/83a81079-79b2-4a1d-b037-346759f74a88)
-![image](https://github.com/auspicious0/BreastCancer/assets/108572025/2c909e89-4802-4059-abc6-cabaea1a36e7)
-![image](https://github.com/auspicious0/BreastCancer/assets/108572025/b1f39971-5b45-4f3a-97c2-1ee6f59ae34e)
-
-
-
-```
-```
-DF <- na.omit(DF)
-
-# 이상치 및 결측값 처리 함수
-calculate_outliers <- function(data, column_name) {
-  iqr_value <- IQR(data[[column_name]])
-  upper_limit <- quantile(data[[column_name]], 0.75) + 1.5 * iqr_value
-  lower_limit <- quantile(data[[column_name]], 0.25) - 1.5 * iqr_value
-
-  data[[column_name]] <- ifelse(data[[column_name]] < lower_limit | data[[column_name]] > upper_limit, NA, data[[column_name]])
-
-  return(data)
-}
-DF <- DF %>%
-  mutate(
-    `Marital Status` = ifelse(`Marital Status` == "", NA, as.character(`Marital Status`)),
-    Gender = ifelse(Gender == "", NA, as.character(Gender)),
-    `Home Owner` = ifelse(`Home Owner` == "", NA, as.character(`Home Owner`))
-  ) %>%
-  drop_na()
-# 이상치 및 결측값 처리 및 결과에 대한 상자그림 그리기
-DF <- calculate_outliers(DF, "Income")
-DF <- calculate_outliers(DF, "Children")
-DF <- calculate_outliers(DF, "Cars")
-DF <- calculate_outliers(DF, "Age")
-DF <- na.omit(DF)
-boxplot(DF$Income,DF$Children,DF$Cars,DF$Age)
-
-DF %>% summary()
-table(is.na(DF))
-DF$`Marital Status` %>%unique()
-DF$Gender %>% unique()
-DF$Education %>% unique()
-DF$Occupation %>% unique()
-DF$`Home Owner` %>% unique()
-DF$Region %>% unique()
-DF$`Purchased Bike` %>% unique()
-
-DF<-select(DF,-ID)%>%
-  mutate_at(c("Marital Status","Gender","Education","Occupation","Home Owner","Region","Purchased Bike"),factor)
-```
-
-## 4. 카이제곱 검정
-
-1. 자전거 구매 여부와 결혼 상태 (Marital Status) 간의 연관관계
-
-다음의 코드를 사용하여 자전거 구매 여부와 결혼 상태 간의 연관관계를 카이제곱 검정을 통해 분석했습니다. 이 검정은 범주형 변수 간의 독립성을 평가합니다.
-```
-gmodels::CrossTable(DF$`Purchased Bike`, DF$`Marital Status`, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
 ```
 
 ```
-"자전거(anxiousness)와 결혼(Marital Status)와의 연관관계 분석 "
-
- 
-   Cell Contents
-|-------------------------|
-|                       N |
-|              Expected N |
-| Chi-square contribution |
-|         N / Table Total |
-|-------------------------|
-
- 
-Total Observations in Table:  889 
-
- 
-                    | DF$`Marital Status` 
-DF$`Purchased Bike` |   Married |    Single | Row Total | 
---------------------|-----------|-----------|-----------|
-                 No |       273 |       183 |       456 | 
-                    |   246.209 |   209.791 |           | 
-                    |     2.915 |     3.421 |           | 
-                    |     0.307 |     0.206 |           | 
---------------------|-----------|-----------|-----------|
-                Yes |       207 |       226 |       433 | 
-                    |   233.791 |   199.209 |           | 
-                    |     3.070 |     3.603 |           | 
-                    |     0.233 |     0.254 |           | 
---------------------|-----------|-----------|-----------|
-       Column Total |       480 |       409 |       889 | 
---------------------|-----------|-----------|-----------|
-
- 
-Statistics for All Table Factors
-
-
-Pearson's Chi-squared test 
-------------------------------------------------------------
-Chi^2 =  13.00944     d.f. =  1     p =  0.0003099247 
-
-Pearson's Chi-squared test with Yates' continuity correction 
-------------------------------------------------------------
-Chi^2 =  12.52838     d.f. =  1     p =  0.0004008178 
+bc$diagnosis %>% unique()
+```
+```
+M ` B
 
 ```
-
-
-결과에서 p-값을 확인하여 자전거 구매 여부와 결혼 상태 간의 관계가 통계적으로 유의미한지 확인할 수 있습니다.
-
-
-
-2. 자전거 구매 여부와 통근 거리 (Commute Distance) 간의 연관관계
-자전거 구매 여부와 통근 거리 간의 연관관계를 카이제곱 검정을 통해 분석하였습니다. 아래 코드를 사용하여 실행하였습니다:
-
 ```
-gmodels::CrossTable(DF$`Purchased Bike`, DF$`Commute Distance`, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
-```
-카이제곱 검정 결과의 p-값을 통해 자전거 구매 여부와 통근 거리 간의 연관성을 확인할 수 있습니다.
-
-```
-"자전거(anxiousness)와 통근(Commute Distance)와의 연관관계 분석 "
-
- 
-   Cell Contents
-|-------------------------|
-|                       N |
-|              Expected N |
-| Chi-square contribution |
-|         N / Table Total |
-|-------------------------|
-
- 
-Total Observations in Table:  889 
-
- 
-                    | DF$`Commute Distance` 
-DF$`Purchased Bike` |  0-1 Miles |  1-2 Miles |  10+ Miles |  2-5 Miles | 5-10 Miles |  Row Total | 
---------------------|------------|------------|------------|------------|------------|------------|
-                 No |        136 |         82 |         67 |         62 |        109 |        456 | 
-                    |    163.627 |     80.531 |     46.677 |     76.940 |     88.225 |            | 
-                    |      4.664 |      0.027 |      8.848 |      2.901 |      4.892 |            | 
-                    |      0.153 |      0.092 |      0.075 |      0.070 |      0.123 |            | 
---------------------|------------|------------|------------|------------|------------|------------|
-                Yes |        183 |         75 |         24 |         88 |         63 |        433 | 
-                    |    155.373 |     76.469 |     44.323 |     73.060 |     83.775 |            | 
-                    |      4.912 |      0.028 |      9.318 |      3.055 |      5.152 |            | 
-                    |      0.206 |      0.084 |      0.027 |      0.099 |      0.071 |            | 
---------------------|------------|------------|------------|------------|------------|------------|
-       Column Total |        319 |        157 |         91 |        150 |        172 |        889 | 
---------------------|------------|------------|------------|------------|------------|------------|
-
- 
-Statistics for All Table Factors
-
-
-Pearson's Chi-squared test 
-------------------------------------------------------------
-Chi^2 =  43.79881     d.f. =  4     p =  7.063732e-09 
-
-```
-3. 자전거 구매 여부와 성별 (Gender) 간의 연관관계
-자전거 구매 여부와 성별 간의 연관관계를 카이제곱 검정을 통해 분석했습니다. 아래 코드를 사용하여 실행하였습니다:
-
-```
-gmodels::CrossTable(DF$`Purchased Bike`, DF$Gender, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
-```
-
-카이제곱 검정 결과에서 p-값을 확인하여 자전거 구매 여부와 성별 간의 관계가 통계적으로 유의미한지 확인할 수 있습니다.
-
-```
-"자전거(anxiousness)와 성별(Gender)와의 연관관계 분석 "
-
- 
-   Cell Contents
-|-------------------------|
-|                       N |
-|              Expected N |
-| Chi-square contribution |
-|         N / Table Total |
-|-------------------------|
-
- 
-Total Observations in Table:  889 
-
- 
-                    | DF$Gender 
-DF$`Purchased Bike` |    Female |      Male | Row Total | 
---------------------|-----------|-----------|-----------|
-                 No |       218 |       238 |       456 | 
-                    |   225.692 |   230.308 |           | 
-                    |     0.262 |     0.257 |           | 
-                    |     0.245 |     0.268 |           | 
---------------------|-----------|-----------|-----------|
-                Yes |       222 |       211 |       433 | 
-                    |   214.308 |   218.692 |           | 
-                    |     0.276 |     0.271 |           | 
-                    |     0.250 |     0.237 |           | 
---------------------|-----------|-----------|-----------|
-       Column Total |       440 |       449 |       889 | 
---------------------|-----------|-----------|-----------|
-
- 
-Statistics for All Table Factors
-
-
-Pearson's Chi-squared test 
-------------------------------------------------------------
-Chi^2 =  1.065634     d.f. =  1     p =  0.3019336 
-
-Pearson's Chi-squared test with Yates' continuity correction 
-------------------------------------------------------------
-Chi^2 =  0.9315954     d.f. =  1     p =  0.3344487 
-
-```
-
-
-
-## 5. 로지스틱 회귀 분석
-
-학습 데이터와 테스트 데이터 분리
-데이터를 학습 데이터와 테스트 데이터로 분리하고 모델 학습을 준비합니다:
-
-```
-index <- caret::createDataPartition(y = DF$`Purchased Bike`, p = 0.8, list = FALSE)
-train <- DF[index,]
-test <- DF[-index,]
-```
-
-로지스틱 회귀 모델을 학습합니다:
-
-```
-m <- glm(formula = `Purchased Bike` ~ ., data = train, family = "binomial")
-summary(m)
+bc <- select(bc,-id,-V33) %>%
+      mutate_at("diagnosis",factor)
+bc %>% str()
 ```
 
 ```
- "glm model m"
+tibble [569 × 31] (S3: tbl_df/tbl/data.frame)
+ $ diagnosis              : Factor w/ 2 levels "B","M": 2 2 2 2 2 2 2 2 2 2 ...
+ $ radius_mean            : num [1:569] 18 20.6 19.7 11.4 20.3 ...
+ $ texture_mean           : num [1:569] 10.4 17.8 21.2 20.4 14.3 ...
+ $ perimeter_mean         : num [1:569] 122.8 132.9 130 77.6 135.1 ...
+ $ area_mean              : num [1:569] 1001 1326 1203 386 1297 ...
+ $ smoothness_mean        : num [1:569] 0.1184 0.0847 0.1096 0.1425 0.1003 ...
+ $ compactness_mean       : num [1:569] 0.2776 0.0786 0.1599 0.2839 0.1328 ...
+ $ concavity_mean         : num [1:569] 0.3001 0.0869 0.1974 0.2414 0.198 ...
+ $ concave points_mean    : num [1:569] 0.1471 0.0702 0.1279 0.1052 0.1043 ...
+ $ symmetry_mean          : num [1:569] 0.242 0.181 0.207 0.26 0.181 ...
+ $ fractal_dimension_mean : num [1:569] 0.0787 0.0567 0.06 0.0974 0.0588 ...
+ $ radius_se              : num [1:569] 1.095 0.543 0.746 0.496 0.757 ...
+ $ texture_se             : num [1:569] 0.905 0.734 0.787 1.156 0.781 ...
+ $ perimeter_se           : num [1:569] 8.59 3.4 4.58 3.44 5.44 ...
+ $ area_se                : num [1:569] 153.4 74.1 94 27.2 94.4 ...
+ $ smoothness_se          : num [1:569] 0.0064 0.00522 0.00615 0.00911 0.01149 ...
+ $ compactness_se         : num [1:569] 0.049 0.0131 0.0401 0.0746 0.0246 ...
+ $ concavity_se           : num [1:569] 0.0537 0.0186 0.0383 0.0566 0.0569 ...
+ $ concave points_se      : num [1:569] 0.0159 0.0134 0.0206 0.0187 0.0188 ...
+ $ symmetry_se            : num [1:569] 0.03 0.0139 0.0225 0.0596 0.0176 ...
+ $ fractal_dimension_se   : num [1:569] 0.00619 0.00353 0.00457 0.00921 0.00511 ...
+ $ radius_worst           : num [1:569] 25.4 25 23.6 14.9 22.5 ...
+ $ texture_worst          : num [1:569] 17.3 23.4 25.5 26.5 16.7 ...
+ $ perimeter_worst        : num [1:569] 184.6 158.8 152.5 98.9 152.2 ...
+ $ area_worst             : num [1:569] 2019 1956 1709 568 1575 ...
+ $ smoothness_worst       : num [1:569] 0.162 0.124 0.144 0.21 0.137 ...
+ $ compactness_worst      : num [1:569] 0.666 0.187 0.424 0.866 0.205 ...
+ $ concavity_worst        : num [1:569] 0.712 0.242 0.45 0.687 0.4 ...
+ $ concave points_worst   : num [1:569] 0.265 0.186 0.243 0.258 0.163 ...
+ $ symmetry_worst         : num [1:569] 0.46 0.275 0.361 0.664 0.236 ...
+```
 
+## 4. 의사 결정 트리 분석(Decision Tree)
+
+데이터를 학습 및 테스트 세트로 분할하고 모델을 생성하여 성능을 평가하고 과적합을 방지하기 위해 가지를 제거합니다.
+
+### 4-1. 데이터 분할
+
+Decision Tree 분석 rpart()를 수행하기 위해 우선 train 데이터와 test 데이터로 데이터를 분리합니다. (데이터가 충분하지않으므로 9:1으로 분리합니다.)
+그런데 무작위로 데이터를 분리하지 않고 diagnosis 를 기준으로 데이터를 분할하기 위해 caret을 install해 createDataPartition를 활용하겠습니다.
+
+```
+install.packages("caret")
+library(caret)
+set.seed(31) #다음번 계산 때도 동일한 값으로 분할될 수 있도록 조치
+
+index <- caret::createDataPartition(y = bc$diagnosis, p = 0.9, list=FALSE)
+train <- bc[index,]
+test <- bc[-index,]
+```
+
+### 4-2. 의사 결정 트리 모델 학습
+
+이제 train 데이터를 가지고 DecisionTree 모델을 학습하겠습니다. 
+
+```
+install.packages("rpart")
+library(rpart)
+
+model_bc <- rpart(formula = diagnosis ~ ., data= train, method = "class")
+summary(model_bc)
+
+```
+
+```
 Call:
-glm(formula = `Purchased Bike` ~ ., family = "binomial", data = train)
+rpart(formula = diagnosis ~ ., data = train, method = "class")
+  n= 359 
 
-Coefficients:
-                               Estimate Std. Error z value Pr(>|z|)    
-(Intercept)                  -6.782e-01  5.645e-01  -1.201  0.22959    
-`Marital Status`Single        8.222e-01  1.872e-01   4.393 1.12e-05 ***
-GenderMale                    9.021e-03  1.657e-01   0.054  0.95658    
-Income                        6.754e-06  5.288e-06   1.277  0.20152    
-Children                     -1.362e-01  6.595e-02  -2.065  0.03897 *  
-EducationGraduate Degree     -4.215e-01  2.624e-01  -1.607  0.10812    
-EducationHigh School          2.274e-02  3.072e-01   0.074  0.94099    
-EducationPartial College     -2.464e-01  2.621e-01  -0.940  0.34717    
-EducationPartial High School -5.671e-01  4.389e-01  -1.292  0.19626    
-OccupationManagement          1.784e-01  5.115e-01   0.349  0.72729    
-OccupationManual             -1.138e-01  3.347e-01  -0.340  0.73376    
-OccupationProfessional        8.442e-01  3.997e-01   2.112  0.03466 *  
-OccupationSkilled Manual      2.452e-01  3.200e-01   0.766  0.44355    
-`Home Owner`Yes               4.817e-01  2.068e-01   2.329  0.01986 *  
-Cars                         -3.367e-01  1.245e-01  -2.704  0.00685 ** 
-`Commute Distance`1-2 Miles  -4.481e-01  2.502e-01  -1.791  0.07329 .  
-`Commute Distance`10+ Miles  -1.711e+00  3.709e-01  -4.614 3.94e-06 ***
-`Commute Distance`2-5 Miles  -2.952e-01  2.621e-01  -1.126  0.26008    
-`Commute Distance`5-10 Miles -1.245e+00  3.079e-01  -4.042 5.30e-05 ***
-RegionNorth America           5.437e-02  2.654e-01   0.205  0.83771    
-RegionPacific                 1.017e+00  3.094e-01   3.288  0.00101 ** 
-Age                           1.020e-02  9.958e-03   1.024  0.30578    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+          CP nsplit rel error    xerror       xstd
+1 0.67415730      0 1.0000000 1.0000000 0.09192627
+2 0.06741573      1 0.3258427 0.5056180 0.07049103
+3 0.06179775      2 0.2584270 0.4606742 0.06771241
+4 0.01000000      4 0.1348315 0.3146067 0.05708944
 
-(Dispersion parameter for binomial family taken to be 1)
+Variable importance
+        radius_worst           area_worst      perimeter_worst 
+                  16                   15                   13 
+           area_mean          radius_mean       perimeter_mean 
+                  13                   13                   12 
+        texture_mean        texture_worst concave points_worst 
+                   3                    3                    3 
+      concavity_mean           texture_se  concave points_mean 
+                   1                    1                    1 
+   compactness_worst      concavity_worst     compactness_mean 
+                   1                    1                    1 
+             area_se        smoothness_se 
+                   1                    1 
 
-    Null deviance: 986.59  on 711  degrees of freedom
-Residual deviance: 873.31  on 690  degrees of freedom
-AIC: 917.31
+Node number 1: 359 observations,    complexity param=0.6741573
+  predicted class=B  expected loss=0.2479109  P(node) =1
+    class counts:   270    89
+   probabilities: 0.752 0.248 
+  left son=2 (279 obs) right son=3 (80 obs)
+  Primary splits:
+      radius_worst         < 16.805    to the left,  improve=80.95968, (0 missing)
+      perimeter_worst      < 105.95    to the left,  improve=79.58408, (0 missing)
+      area_worst           < 865.7     to the left,  improve=79.26065, (0 missing)
+      concave points_mean  < 0.051455  to the left,  improve=76.84859, (0 missing)
+      concave points_worst < 0.1416    to the left,  improve=72.36913, (0 missing)
+  Surrogate splits:
+      area_worst      < 865.7     to the left,  agree=0.992, adj=0.963, (0 split)
+      perimeter_worst < 109.75    to the left,  agree=0.969, adj=0.863, (0 split)
+      area_mean       < 696.05    to the left,  agree=0.964, adj=0.837, (0 split)
+      radius_mean     < 15.045    to the left,  agree=0.961, adj=0.825, (0 split)
+      perimeter_mean  < 96.42     to the left,  agree=0.955, adj=0.800, (0 split)
 
-Number of Fisher Scoring iterations: 4
+Node number 2: 279 observations,    complexity param=0.06179775
+  predicted class=B  expected loss=0.06810036  P(node) =0.7771588
+    class counts:   260    19
+   probabilities: 0.932 0.068 
+  left son=4 (251 obs) right son=5 (28 obs)
+  Primary splits:
+      concave points_worst < 0.1349    to the left,  improve=13.611100, (0 missing)
+      concave points_mean  < 0.048785  to the left,  improve=12.540700, (0 missing)
+      concavity_mean       < 0.093405  to the left,  improve=10.696770, (0 missing)
+      perimeter_worst      < 101.65    to the left,  improve=10.011740, (0 missing)
+      area_worst           < 727.1     to the left,  improve= 9.007121, (0 missing)
+  Surrogate splits:
+      concave points_mean < 0.04804   to the left,  agree=0.943, adj=0.429, (0 split)
+      concavity_mean      < 0.093405  to the left,  agree=0.935, adj=0.357, (0 split)
+      compactness_worst   < 0.361     to the left,  agree=0.935, adj=0.357, (0 split)
+      concavity_worst     < 0.3373    to the left,  agree=0.932, adj=0.321, (0 split)
+      compactness_mean    < 0.1332    to the left,  agree=0.921, adj=0.214, (0 split)
+
+Node number 3: 80 observations,    complexity param=0.06741573
+  predicted class=M  expected loss=0.125  P(node) =0.2228412
+    class counts:    10    70
+   probabilities: 0.125 0.875 
+  left son=6 (10 obs) right son=7 (70 obs)
+  Primary splits:
+      texture_worst   < 19.91     to the left,  improve=10.414290, (0 missing)
+      texture_mean    < 16.37     to the left,  improve= 9.252306, (0 missing)
+      concavity_mean  < 0.07265   to the left,  improve= 7.023810, (0 missing)
+      concavity_worst < 0.2314    to the left,  improve= 6.156410, (0 missing)
+      texture_se      < 0.4923    to the left,  improve= 5.327789, (0 missing)
+  Surrogate splits:
+      texture_mean  < 16.37     to the left,  agree=0.988, adj=0.9, (0 split)
+      texture_se    < 0.47315   to the left,  agree=0.912, adj=0.3, (0 split)
+      symmetry_mean < 0.14035   to the left,  agree=0.900, adj=0.2, (0 split)
+      radius_se     < 0.2171    to the left,  agree=0.900, adj=0.2, (0 split)
+      perimeter_se  < 1.5295    to the left,  agree=0.900, adj=0.2, (0 split)
+
+Node number 4: 251 observations
+  predicted class=B  expected loss=0.01593625  P(node) =0.6991643
+    class counts:   247     4
+   probabilities: 0.984 0.016 
+
+Node number 5: 28 observations,    complexity param=0.06179775
+  predicted class=M  expected loss=0.4642857  P(node) =0.07799443
+    class counts:    13    15
+   probabilities: 0.464 0.536 
+  left son=10 (17 obs) right son=11 (11 obs)
+  Primary splits:
+      texture_mean        < 19.45     to the left,  improve=7.810924, (0 missing)
+      texture_worst       < 27.49     to the left,  improve=6.706349, (0 missing)
+      area_worst          < 724.05    to the left,  improve=5.357143, (0 missing)
+      concave points_mean < 0.04944   to the left,  improve=3.778571, (0 missing)
+      smoothness_se       < 0.005792  to the left,  improve=3.500000, (0 missing)
+  Surrogate splits:
+      texture_worst  < 27.49     to the left,  agree=0.893, adj=0.727, (0 split)
+      texture_se     < 1.452     to the left,  agree=0.786, adj=0.455, (0 split)
+      concavity_mean < 0.10298   to the left,  agree=0.750, adj=0.364, (0 split)
+      area_se        < 24.89     to the left,  agree=0.750, adj=0.364, (0 split)
+      smoothness_se  < 0.0073995 to the left,  agree=0.750, adj=0.364, (0 split)
+
+Node number 6: 10 observations
+  predicted class=B  expected loss=0.2  P(node) =0.02785515
+    class counts:     8     2
+   probabilities: 0.800 0.200 
+
+Node number 7: 70 observations
+  predicted class=M  expected loss=0.02857143  P(node) =0.1949861
+    class counts:     2    68
+   probabilities: 0.029 0.971 
+
+Node number 10: 17 observations
+  predicted class=B  expected loss=0.2352941  P(node) =0.04735376
+    class counts:    13     4
+   probabilities: 0.765 0.235 
+
+Node number 11: 11 observations
+  predicted class=M  expected loss=0  P(node) =0.03064067
+    class counts:     0    11
+   probabilities: 0.000 1.000 
 ```
-## 6. 변수 선택 (Backward Elimination)
 
-학습된 모델에서 불필요한 변수를 제거하기 위해 역방향 제거 방법을 사용합니다:
+CP 0.01로 더이상 분기하지 않습니다. 그 지점의 오류율(rel_error)과 교차검증오류율(xerror),교차검증오류의 표준편차(xstd)의 값을 확인합니다.
 
-```
-mback <- step(m, direction = "backward")
-```
+이 지점은 가지치기(pruning) 을 위한 최적의 lowest level 선택에 사용됩니다.
 
-## 7. 모델 평가
+Variable importance 값은 둘레(perimeter_worst)이 가장 크고 반경(radius_worst), 지역(area_worst)이 그 다음을 차지합니다.
 
-### 7-1. ROC 곡선
+그 다음으로 모델에 관한 설명이 나오는데 이는 그림을 통해 살펴보겠습니다.
 
-ROC 곡선을 사용하여 모델의 성능을 시각화하고 적절한 CUT-OFF 값을 선택합니다:
+### 4-3. 모델 시각화
 
-```
-install.packages("pROC")
-roc_c <- pROC::roc(predict_check$`Purchased Bike`, predict_check$predict_value)
-pROC::plot.roc(roc_c, col = "royalblue", print.auc = TRUE, max.auc.polygon = TRUE, print.thres = TRUE, print.thres.pch = 19, print.thres.col = "red", auc.polygon = TRUE, auc.polygon.col = "#D1F2EB")
+모델을 시각화 해 직관적으로 이해해 보겠습니다.
 
 ```
-![image](https://github.com/auspicious0/bike_buyers/assets/108572025/414a0572-34d0-4f25-b544-f728f755ce7c)
-
-### 7-2. 예측 및 성능 평가
-
-선택한 CUT-OFF 값으로 예측을 수행하고 모델의 성능을 혼돈 매트릭스를 통해 확인합니다:
-
-```
-predict_value <- predict(mback, test, type = "response") %>% tibble(predict_value = .)
-predict_check <- test %>% select(`Purchased Bike`) %>% dplyr::bind_cols(., predict_value)
-predict_cutoff_roc <- predict_check %>%
-  mutate(predict_biked = as.factor(ifelse(predict_value > 0.5136439, "Yes", "No")))
-
-# 혼돈 매트릭스를 통한 성능 평가
-caret::confusionMatrix(predict_cutoff_roc$`Purchased Bike`, predict_cutoff_roc$predict_biked)
-
+par(mfrow = c(1,1), xpd = NA)
+plot(model_bc)
+text(model_bc, use.n = TRUE)
 ```
 
+
+<img src="https://github.com/auspicious0/BreastCancer/assets/108572025/58e3afb0-b4de-459a-8df2-64a1452aeb29.png" width="400" height="400"/>
+
+위 그림은 식별이 어렵습니다. 따라서 더 식별이 편한 그림으로 바꿔 보겠습니다.
+
 ```
-A tibble: 177 × 3
-Purchased Bike	predict_value	predict_biked
-<fct>	<dbl>	<fct>
-Yes	0.5228698	Yes
-Yes	0.5782981	Yes
-No	0.4999350	No
-No	0.4254288	No
-Yes	0.5846695	Yes
-Yes	0.5796278	Yes
-No	0.2024137	No
-Yes	0.5499326	Yes
-Yes	0.6366437	Yes
-Yes	0.8329877	Yes
-No	0.4634943	No
-Yes	0.5499326	Yes
-No	0.2385416	No
-Yes	0.4232865	No
-Yes	0.4739440	No
-No	0.4943569	No
-No	0.5533325	Yes
-No	0.3537212	No
-Yes	0.5605530	Yes
-Yes	0.8519412	Yes
-No	0.6782554	Yes
-Yes	0.7448223	Yes
-Yes	0.8518051	Yes
-No	0.4815053	No
-Yes	0.1969868	No
-Yes	0.2856157	No
-No	0.5076084	No
-No	0.2385416	No
-No	0.5785834	Yes
-Yes	0.5796278	Yes
-⋮	⋮	⋮
-No	0.2202885	No
-No	0.6198953	Yes
-No	0.4304286	No
-No	0.2766733	No
-No	0.3742456	No
-No	0.4560945	No
-Yes	0.1315284	No
-Yes	0.6996423	Yes
-No	0.3790706	No
-Yes	0.6996423	Yes
-No	0.6447875	Yes
-No	0.4660337	No
-Yes	0.6198953	Yes
-Yes	0.7359148	Yes
-No	0.1356468	No
-Yes	0.2202885	No
-No	0.2078664	No
-Yes	0.4417597	No
-No	0.3851596	No
-Yes	0.7145817	Yes
-No	0.2202885	No
-No	0.3112684	No
-No	0.3742456	No
-No	0.4378422	No
-No	0.5716155	Yes
-No	0.7123073	Yes
-Yes	0.2059617	No
-No	0.2031100	No
-No	0.2823118	No
-Yes	0.3698322	No
+install.packages("rpart.plot")
+library(rpart.plot)
+rpart.plot(model_bc)
+
+install.packages(c("rattle","rpart.plot"))
+
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+
+fancyRpartPlot(model_bc)
+```
+
+<img src="https://github.com/auspicious0/BreastCancer/assets/108572025/b43809e6-36ac-4b7f-a178-dd7574e3d6f0.png" width="400" height="400"/>
+<img src="https://github.com/auspicious0/BreastCancer/assets/108572025/78a9cb98-7bbf-4e79-8232-18b30d9a3bbe.png" width="400" height="400"/>
+
+
+radius_worst, area_worst, perimeter_worst 순으로 Variable importance를 차지하고 있으나
+
+1. 데이터 양이 많지 않고
+ 
+2. Variable importance 값 차이가 크지 않기 때문에 예상과는 다른 결정트리가 나왔습니다.
+
+해당 트리가 과잉적합에 빠지지 않도록 모델 model_bc에 가지치기(pruning)을 하려고 합니다.
+
+
+### 4-4. 가지치기(pruning)
+
+우선, 교차 검증 오류율(xerror)이 최소가 되는 CP를 min_xerror_cp에 저장하게습니다
+
+```
+min_xerror_cp <- model_bc$cptable %>%
+  as_tibble() %>%
+  filter(xerror == min(xerror)) %>%
+  pull(CP)
+print("min_error_cp = ")
+min_xerror_cp
+```
+
+```
+[1] "min_error_cp = "
+0.01
+```
+
+위에서 구한 min_xerror_cp 값을 이용하여 모델에 가지치기(pruning)를 수행하여 model_pr에 저장하겠습니다.
+
+```
+model_pr <- rpart::prune(model_bc, cp = min_xerror_cp)
+fancyRpartPlot(model_pr)
+```
+![image](https://github.com/auspicious0/BreastCancer/assets/108572025/4e6b362c-ceed-45f7-895d-c2938a1dd00c)
+
+## 5. 모델 평가
+
+### 5-1. 예측
+
+```
+predict_value <- predict(model_pr, test, type = "class") %>% tibble(predict_value = .)
+predict_check <- test %>% select(diagnosis) %>% dplyr::bind_cols(., predict_value)
+predict_check
+```
+
+```
+
+# A tibble: 39 × 2
+   diagnosis predict_value
+   <fct>     <fct>        
+ 1 M         M            
+ 2 B         B            
+ 3 B         B            
+ 4 M         M            
+ 5 B         B            
+ 6 B         B            
+ 7 B         B            
+ 8 M         M            
+ 9 M         M            
+10 B         B            
+# ℹ 29 more rows
+```
+모두 예측을 수행한 것을 확인할 수 있습니다.혼돈 메트릭스(confusionMatrix)를 활용하여 모델을 분석해 보겠습니다.
+
+### 5-2. 혼돈 메트릭스(Confusion Matrix)
+
+```
+cm <- caret::confusionMatrix(predict_check$predict_value, test$diagnosis)
+cm
 ```
 
 ```
 Confusion Matrix and Statistics
 
           Reference
-Prediction No Yes
-       No  68  23
-       Yes 35  51
-                                          
-               Accuracy : 0.6723          
-                 95% CI : (0.5979, 0.7409)
-    No Information Rate : 0.5819          
-    P-Value [Acc > NIR] : 0.00849         
-                                          
-                  Kappa : 0.3416          
-                                          
- Mcnemar's Test P-Value : 0.14863         
-                                          
-            Sensitivity : 0.6602          
-            Specificity : 0.6892          
-         Pos Pred Value : 0.7473          
-         Neg Pred Value : 0.5930          
-             Prevalence : 0.5819          
-         Detection Rate : 0.3842          
-   Detection Prevalence : 0.5141          
-      Balanced Accuracy : 0.6747          
-                                          
-       'Positive' Class : No              
-                                  
+Prediction  B  M
+         B 30  0
+         M  0  9
+                                     
+               Accuracy : 1          
+                 95% CI : (0.9097, 1)
+    No Information Rate : 0.7692     
+    P-Value [Acc > NIR] : 3.599e-05  
+                                     
+                  Kappa : 1          
+                                     
+ Mcnemar's Test P-Value : NA         
+                                     
+            Sensitivity : 1.0000     
+            Specificity : 1.0000     
+         Pos Pred Value : 1.0000     
+         Neg Pred Value : 1.0000     
+             Prevalence : 0.7692     
+         Detection Rate : 0.7692     
+   Detection Prevalence : 0.7692     
+      Balanced Accuracy : 1.0000     
+                                     
+       'Positive' Class : B      
 ```
+정확도 (Accuracy): 1.0
 
-정확도 (Accuracy): 0.6723
+전체 예측 중에서 올바르게 분류한 비율로, 1.0또는 100%입니다.(TP + TN) / (TP + TN + FP + FN)
 
-전체 예측 중에서 올바르게 분류한 비율로, 0.6723 또는 67.23%입니다.(TP + TN) / (TP + TN + FP + FN)
+민감도 (Sensitivity): 1.0
 
-민감도 (Sensitivity): 0.6602
+실제 양성 중에서 올바르게 양성으로 분류된 비율로, 1.0또는 100%입니다.
 
-실제 양성 중에서 올바르게 양성으로 분류된 비율로, 0.6602 또는 66.02%입니다.
+특이도 (Specificity): 1.0
 
-특이도 (Specificity): 0.6892
+실제 음성 중에서 올바르게 음성으로 분류된 비율로, 1.0또는 100%입니다.
 
-실제 음성 중에서 올바르게 음성으로 분류된 비율로, 0.6892 또는 68.92%입니다.
-
-정밀도 (Precision): 0.7473
+정밀도 (Precision): 1.0
 
 정밀도는 모델이 양성으로 예측한 샘플 중에서 실제로 양성인 샘플의 비율을 나타냅니다. TP / (TP + FP)
 
-재현율 (Recall): 0.6602
+재현율 (Recall): 1.0
 
 재현율은 실제로 양성인 샘플 중에서 모델이 양성으로 예측한 샘플의 비율을 나타냅니다. TP / (TP + FN)
 
-따라서 자전거를 살 것인지 어느 정도 유의미한 예측을 할 수 있었습니다. 예측의 정도가 크지 않아 신뢰도가 높진 않지만 어떤 병원이나 심각한 자료 분석을 수행하는 경우가 아니기 때문에 참고 정도의 자료로 작용할 수 있을 것으로 보입니다.
+데이터가 작기 때문에 가능한 결과라고 생각하지만 100프로의 정확도 및 정밀도 등을 보인다는 점이 의미가 있고 결정트리를 통해 분석하기 좋은 데이터다라는 결론을 내립니다.
 
+## 6. 문의
+프로젝트에 관한 문의나 버그 리포트는 [이슈 페이지](https://github.com/auspicious0/BreastCancer/issues)를 통해 제출해주세요.
 
-## 8. 문의
-프로젝트에 관한 문의나 버그 리포트는 [이슈 페이지](https://github.com/auspicious0/bike_buyers/issues)를 통해 제출해주세요.
-
-보다 더 자세한 내용을 원하신다면 [보고서](https://github.com/auspicious0/bike_buyers/blob/main/%EB%A1%9C%EC%A7%80%EC%8A%A4%ED%8B%B1%ED%9A%8C%EA%B7%80_bike_buyers.ipynb) 를 확인해 주시기 바랍니다.
+보다 더 자세한 내용을 원하신다면 [보고서](https://github.com/auspicious0/BreastCancer/blob/main/DesicionTree.ipynb) 를 확인해 주시기 바랍니다.
