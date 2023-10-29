@@ -1,1 +1,596 @@
-# BreastCancer
+# 유방암 데이터 분석 (의사 결정 트리)
+
+본 문서는 Kaggle에서 제공한 유방암 데이터셋을 활용하여 데이터 분석 및 의사 결정 트리를 통한 분류 모델 구축을 목표로 합니다. 이 데이터셋은 유방암 진단 정보를 담고 있습니다. 데이터를 적절하게 전처리한 후, 모델링과 예측을 수행합니다.
+
+## 목차
+1. [패키지 설치 및 그래프 설정](#1-패키지-설치-및-그래프-설정)
+2. [데이터 수집](#2-데이터-수집)
+3. [데이터 전처리](#3-데이터-전처리)
+4. [의사 결정 트리 분석](#4-의사-결정-트리-분석)
+5. [모델 평가](#5-모델-평가)
+6. [결론](#6-결론)
+
+## 1. 패키지 설치 및 그래프 설정
+
+프로젝트를 시작하기 전, 필요한 R 패키지를 설치하고 그래프 설정을 합니다.
+ ```
+#패키지 부착, 출력 그래프의 크기를 설정
+install.packages(c("tidyverse","data.table","caret"))
+library(tidyverse)
+library(data.table)
+library(repr)
+
+options(repr.plot.width=7,repr.plot.height=7)
+```
+
+## 2. 데이터 수집
+
+유방암 데이터는 Kaggle에서 제공되며 다음 링크에서 얻을 수 있습니다:
+
+[Kaggle Dataset](https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data)
+
+데이터를 다운로드하고 분석에 활용합니다.
+
+```
+#https://www.kaggle.com/datasets/uciml/breast-cancer-wisconsin-data
+#https://drive.google.com/file/d/1Ow8SNjYJeDw69wCJngsaQLqmaFC0PrDn/view?usp=drive_link
+system("gdown --id 1Ow8SNjYJeDw69wCJngsaQLqmaFC0PrDn")
+system("ls",TRUE)
+
+bc<-fread("BreastCancerData.csv",encoding="UTF-8")%>%as_tibble()
+bc%>%show()
+```
+
+## 3. 데이터 전처리
+
+유방암 데이터를 불러온 후, 결측값 처리, 이상값 처리를 수행합니다. 데이터의 구조를 확인하고 필요한 변수를 팩터(factor)로 변환합니다.
+
+우선, 불러온 데이터를 살펴보기 위해 summary, str(데이터 형태 확인), table(결측값 확인) 함수를 수행해보고 boxplot(이상값 확인)를 통해 시각화 해보겠습니다.
+
+```
+str(bc)
+bc%>%summary()
+table(is.na(bc))
+bc_<-select(bc,-diagnosis)#char형 변수를 제외하고 정수형 변수만을 저장한 bc_를 통해 boxplot
+#을 그려보겠습니다.
+boxplot(bc_)
+```
+
+```
+tibble [569 × 33] (S3: tbl_df/tbl/data.frame)
+ $ id                     : int [1:569] 842302 842517 84300903 84348301 84358402 843786 844359 84458202 844981 84501001 ...
+ $ diagnosis              : chr [1:569] "M" "M" "M" "M" ...
+ $ radius_mean            : num [1:569] 18 20.6 19.7 11.4 20.3 ...
+ $ texture_mean           : num [1:569] 10.4 17.8 21.2 20.4 14.3 ...
+ $ perimeter_mean         : num [1:569] 122.8 132.9 130 77.6 135.1 ...
+ $ area_mean              : num [1:569] 1001 1326 1203 386 1297 ...
+ $ smoothness_mean        : num [1:569] 0.1184 0.0847 0.1096 0.1425 0.1003 ...
+ $ compactness_mean       : num [1:569] 0.2776 0.0786 0.1599 0.2839 0.1328 ...
+ $ concavity_mean         : num [1:569] 0.3001 0.0869 0.1974 0.2414 0.198 ...
+ $ concave points_mean    : num [1:569] 0.1471 0.0702 0.1279 0.1052 0.1043 ...
+ $ symmetry_mean          : num [1:569] 0.242 0.181 0.207 0.26 0.181 ...
+ $ fractal_dimension_mean : num [1:569] 0.0787 0.0567 0.06 0.0974 0.0588 ...
+ $ radius_se              : num [1:569] 1.095 0.543 0.746 0.496 0.757 ...
+ $ texture_se             : num [1:569] 0.905 0.734 0.787 1.156 0.781 ...
+ $ perimeter_se           : num [1:569] 8.59 3.4 4.58 3.44 5.44 ...
+ $ area_se                : num [1:569] 153.4 74.1 94 27.2 94.4 ...
+ $ smoothness_se          : num [1:569] 0.0064 0.00522 0.00615 0.00911 0.01149 ...
+ $ compactness_se         : num [1:569] 0.049 0.0131 0.0401 0.0746 0.0246 ...
+ $ concavity_se           : num [1:569] 0.0537 0.0186 0.0383 0.0566 0.0569 ...
+ $ concave points_se      : num [1:569] 0.0159 0.0134 0.0206 0.0187 0.0188 ...
+ $ symmetry_se            : num [1:569] 0.03 0.0139 0.0225 0.0596 0.0176 ...
+ $ fractal_dimension_se   : num [1:569] 0.00619 0.00353 0.00457 0.00921 0.00511 ...
+ $ radius_worst           : num [1:569] 25.4 25 23.6 14.9 22.5 ...
+ $ texture_worst          : num [1:569] 17.3 23.4 25.5 26.5 16.7 ...
+ $ perimeter_worst        : num [1:569] 184.6 158.8 152.5 98.9 152.2 ...
+ $ area_worst             : num [1:569] 2019 1956 1709 568 1575 ...
+ $ smoothness_worst       : num [1:569] 0.162 0.124 0.144 0.21 0.137 ...
+ $ compactness_worst      : num [1:569] 0.666 0.187 0.424 0.866 0.205 ...
+ $ concavity_worst        : num [1:569] 0.712 0.242 0.45 0.687 0.4 ...
+ $ concave points_worst   : num [1:569] 0.265 0.186 0.243 0.258 0.163 ...
+ $ symmetry_worst         : num [1:569] 0.46 0.275 0.361 0.664 0.236 ...
+ $ fractal_dimension_worst: num [1:569] 0.1189 0.089 0.0876 0.173 0.0768 ...
+ $ V33                    : logi [1:569] NA NA NA NA NA NA ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+       id             diagnosis          radius_mean      texture_mean  
+ Min.   :     8670   Length:569         Min.   : 6.981   Min.   : 9.71  
+ 1st Qu.:   869218   Class :character   1st Qu.:11.700   1st Qu.:16.17  
+ Median :   906024   Mode  :character   Median :13.370   Median :18.84  
+ Mean   : 30371831                      Mean   :14.127   Mean   :19.29  
+ 3rd Qu.:  8813129                      3rd Qu.:15.780   3rd Qu.:21.80  
+ Max.   :911320502                      Max.   :28.110   Max.   :39.28  
+ perimeter_mean     area_mean      smoothness_mean   compactness_mean 
+ Min.   : 43.79   Min.   : 143.5   Min.   :0.05263   Min.   :0.01938  
+ 1st Qu.: 75.17   1st Qu.: 420.3   1st Qu.:0.08637   1st Qu.:0.06492  
+ Median : 86.24   Median : 551.1   Median :0.09587   Median :0.09263  
+ Mean   : 91.97   Mean   : 654.9   Mean   :0.09636   Mean   :0.10434  
+ 3rd Qu.:104.10   3rd Qu.: 782.7   3rd Qu.:0.10530   3rd Qu.:0.13040  
+ Max.   :188.50   Max.   :2501.0   Max.   :0.16340   Max.   :0.34540  
+ concavity_mean    concave points_mean symmetry_mean    fractal_dimension_mean
+ Min.   :0.00000   Min.   :0.00000     Min.   :0.1060   Min.   :0.04996       
+ 1st Qu.:0.02956   1st Qu.:0.02031     1st Qu.:0.1619   1st Qu.:0.05770       
+ Median :0.06154   Median :0.03350     Median :0.1792   Median :0.06154       
+ Mean   :0.08880   Mean   :0.04892     Mean   :0.1812   Mean   :0.06280       
+ 3rd Qu.:0.13070   3rd Qu.:0.07400     3rd Qu.:0.1957   3rd Qu.:0.06612       
+ Max.   :0.42680   Max.   :0.20120     Max.   :0.3040   Max.   :0.09744       
+   radius_se        texture_se      perimeter_se       area_se       
+ Min.   :0.1115   Min.   :0.3602   Min.   : 0.757   Min.   :  6.802  
+ 1st Qu.:0.2324   1st Qu.:0.8339   1st Qu.: 1.606   1st Qu.: 17.850  
+ Median :0.3242   Median :1.1080   Median : 2.287   Median : 24.530  
+ Mean   :0.4052   Mean   :1.2169   Mean   : 2.866   Mean   : 40.337  
+ 3rd Qu.:0.4789   3rd Qu.:1.4740   3rd Qu.: 3.357   3rd Qu.: 45.190  
+ Max.   :2.8730   Max.   :4.8850   Max.   :21.980   Max.   :542.200  
+ smoothness_se      compactness_se      concavity_se     concave points_se 
+ Min.   :0.001713   Min.   :0.002252   Min.   :0.00000   Min.   :0.000000  
+ 1st Qu.:0.005169   1st Qu.:0.013080   1st Qu.:0.01509   1st Qu.:0.007638  
+ Median :0.006380   Median :0.020450   Median :0.02589   Median :0.010930  
+ Mean   :0.007041   Mean   :0.025478   Mean   :0.03189   Mean   :0.011796  
+ 3rd Qu.:0.008146   3rd Qu.:0.032450   3rd Qu.:0.04205   3rd Qu.:0.014710  
+ Max.   :0.031130   Max.   :0.135400   Max.   :0.39600   Max.   :0.052790  
+  symmetry_se       fractal_dimension_se  radius_worst   texture_worst  
+ Min.   :0.007882   Min.   :0.0008948    Min.   : 7.93   Min.   :12.02  
+ 1st Qu.:0.015160   1st Qu.:0.0022480    1st Qu.:13.01   1st Qu.:21.08  
+ Median :0.018730   Median :0.0031870    Median :14.97   Median :25.41  
+ Mean   :0.020542   Mean   :0.0037949    Mean   :16.27   Mean   :25.68  
+ 3rd Qu.:0.023480   3rd Qu.:0.0045580    3rd Qu.:18.79   3rd Qu.:29.72  
+ Max.   :0.078950   Max.   :0.0298400    Max.   :36.04   Max.   :49.54  
+ perimeter_worst    area_worst     smoothness_worst  compactness_worst
+ Min.   : 50.41   Min.   : 185.2   Min.   :0.07117   Min.   :0.02729  
+ 1st Qu.: 84.11   1st Qu.: 515.3   1st Qu.:0.11660   1st Qu.:0.14720  
+ Median : 97.66   Median : 686.5   Median :0.13130   Median :0.21190  
+ Mean   :107.26   Mean   : 880.6   Mean   :0.13237   Mean   :0.25427  
+ 3rd Qu.:125.40   3rd Qu.:1084.0   3rd Qu.:0.14600   3rd Qu.:0.33910  
+ Max.   :251.20   Max.   :4254.0   Max.   :0.22260   Max.   :1.05800  
+ concavity_worst  concave points_worst symmetry_worst   fractal_dimension_worst
+ Min.   :0.0000   Min.   :0.00000      Min.   :0.1565   Min.   :0.05504        
+ 1st Qu.:0.1145   1st Qu.:0.06493      1st Qu.:0.2504   1st Qu.:0.07146        
+ Median :0.2267   Median :0.09993      Median :0.2822   Median :0.08004        
+ Mean   :0.2722   Mean   :0.11461      Mean   :0.2901   Mean   :0.08395        
+ 3rd Qu.:0.3829   3rd Qu.:0.16140      3rd Qu.:0.3179   3rd Qu.:0.09208        
+ Max.   :1.2520   Max.   :0.29100      Max.   :0.6638   Max.   :0.20750        
+   V33         
+ Mode:logical  
+ NA's:569      
+               
+               
+               
+               
+
+FALSE  TRUE 
+18208   569
+
+![image](https://github.com/auspicious0/BreastCancer/assets/108572025/83a81079-79b2-4a1d-b037-346759f74a88)
+![image](https://github.com/auspicious0/BreastCancer/assets/108572025/2c909e89-4802-4059-abc6-cabaea1a36e7)
+![image](https://github.com/auspicious0/BreastCancer/assets/108572025/b1f39971-5b45-4f3a-97c2-1ee6f59ae34e)
+
+
+
+```
+```
+DF <- na.omit(DF)
+
+# 이상치 및 결측값 처리 함수
+calculate_outliers <- function(data, column_name) {
+  iqr_value <- IQR(data[[column_name]])
+  upper_limit <- quantile(data[[column_name]], 0.75) + 1.5 * iqr_value
+  lower_limit <- quantile(data[[column_name]], 0.25) - 1.5 * iqr_value
+
+  data[[column_name]] <- ifelse(data[[column_name]] < lower_limit | data[[column_name]] > upper_limit, NA, data[[column_name]])
+
+  return(data)
+}
+DF <- DF %>%
+  mutate(
+    `Marital Status` = ifelse(`Marital Status` == "", NA, as.character(`Marital Status`)),
+    Gender = ifelse(Gender == "", NA, as.character(Gender)),
+    `Home Owner` = ifelse(`Home Owner` == "", NA, as.character(`Home Owner`))
+  ) %>%
+  drop_na()
+# 이상치 및 결측값 처리 및 결과에 대한 상자그림 그리기
+DF <- calculate_outliers(DF, "Income")
+DF <- calculate_outliers(DF, "Children")
+DF <- calculate_outliers(DF, "Cars")
+DF <- calculate_outliers(DF, "Age")
+DF <- na.omit(DF)
+boxplot(DF$Income,DF$Children,DF$Cars,DF$Age)
+
+DF %>% summary()
+table(is.na(DF))
+DF$`Marital Status` %>%unique()
+DF$Gender %>% unique()
+DF$Education %>% unique()
+DF$Occupation %>% unique()
+DF$`Home Owner` %>% unique()
+DF$Region %>% unique()
+DF$`Purchased Bike` %>% unique()
+
+DF<-select(DF,-ID)%>%
+  mutate_at(c("Marital Status","Gender","Education","Occupation","Home Owner","Region","Purchased Bike"),factor)
+```
+
+## 4. 카이제곱 검정
+
+1. 자전거 구매 여부와 결혼 상태 (Marital Status) 간의 연관관계
+
+다음의 코드를 사용하여 자전거 구매 여부와 결혼 상태 간의 연관관계를 카이제곱 검정을 통해 분석했습니다. 이 검정은 범주형 변수 간의 독립성을 평가합니다.
+```
+gmodels::CrossTable(DF$`Purchased Bike`, DF$`Marital Status`, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
+```
+
+```
+"자전거(anxiousness)와 결혼(Marital Status)와의 연관관계 분석 "
+
+ 
+   Cell Contents
+|-------------------------|
+|                       N |
+|              Expected N |
+| Chi-square contribution |
+|         N / Table Total |
+|-------------------------|
+
+ 
+Total Observations in Table:  889 
+
+ 
+                    | DF$`Marital Status` 
+DF$`Purchased Bike` |   Married |    Single | Row Total | 
+--------------------|-----------|-----------|-----------|
+                 No |       273 |       183 |       456 | 
+                    |   246.209 |   209.791 |           | 
+                    |     2.915 |     3.421 |           | 
+                    |     0.307 |     0.206 |           | 
+--------------------|-----------|-----------|-----------|
+                Yes |       207 |       226 |       433 | 
+                    |   233.791 |   199.209 |           | 
+                    |     3.070 |     3.603 |           | 
+                    |     0.233 |     0.254 |           | 
+--------------------|-----------|-----------|-----------|
+       Column Total |       480 |       409 |       889 | 
+--------------------|-----------|-----------|-----------|
+
+ 
+Statistics for All Table Factors
+
+
+Pearson's Chi-squared test 
+------------------------------------------------------------
+Chi^2 =  13.00944     d.f. =  1     p =  0.0003099247 
+
+Pearson's Chi-squared test with Yates' continuity correction 
+------------------------------------------------------------
+Chi^2 =  12.52838     d.f. =  1     p =  0.0004008178 
+
+```
+
+
+결과에서 p-값을 확인하여 자전거 구매 여부와 결혼 상태 간의 관계가 통계적으로 유의미한지 확인할 수 있습니다.
+
+
+
+2. 자전거 구매 여부와 통근 거리 (Commute Distance) 간의 연관관계
+자전거 구매 여부와 통근 거리 간의 연관관계를 카이제곱 검정을 통해 분석하였습니다. 아래 코드를 사용하여 실행하였습니다:
+
+```
+gmodels::CrossTable(DF$`Purchased Bike`, DF$`Commute Distance`, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
+```
+카이제곱 검정 결과의 p-값을 통해 자전거 구매 여부와 통근 거리 간의 연관성을 확인할 수 있습니다.
+
+```
+"자전거(anxiousness)와 통근(Commute Distance)와의 연관관계 분석 "
+
+ 
+   Cell Contents
+|-------------------------|
+|                       N |
+|              Expected N |
+| Chi-square contribution |
+|         N / Table Total |
+|-------------------------|
+
+ 
+Total Observations in Table:  889 
+
+ 
+                    | DF$`Commute Distance` 
+DF$`Purchased Bike` |  0-1 Miles |  1-2 Miles |  10+ Miles |  2-5 Miles | 5-10 Miles |  Row Total | 
+--------------------|------------|------------|------------|------------|------------|------------|
+                 No |        136 |         82 |         67 |         62 |        109 |        456 | 
+                    |    163.627 |     80.531 |     46.677 |     76.940 |     88.225 |            | 
+                    |      4.664 |      0.027 |      8.848 |      2.901 |      4.892 |            | 
+                    |      0.153 |      0.092 |      0.075 |      0.070 |      0.123 |            | 
+--------------------|------------|------------|------------|------------|------------|------------|
+                Yes |        183 |         75 |         24 |         88 |         63 |        433 | 
+                    |    155.373 |     76.469 |     44.323 |     73.060 |     83.775 |            | 
+                    |      4.912 |      0.028 |      9.318 |      3.055 |      5.152 |            | 
+                    |      0.206 |      0.084 |      0.027 |      0.099 |      0.071 |            | 
+--------------------|------------|------------|------------|------------|------------|------------|
+       Column Total |        319 |        157 |         91 |        150 |        172 |        889 | 
+--------------------|------------|------------|------------|------------|------------|------------|
+
+ 
+Statistics for All Table Factors
+
+
+Pearson's Chi-squared test 
+------------------------------------------------------------
+Chi^2 =  43.79881     d.f. =  4     p =  7.063732e-09 
+
+```
+3. 자전거 구매 여부와 성별 (Gender) 간의 연관관계
+자전거 구매 여부와 성별 간의 연관관계를 카이제곱 검정을 통해 분석했습니다. 아래 코드를 사용하여 실행하였습니다:
+
+```
+gmodels::CrossTable(DF$`Purchased Bike`, DF$Gender, chisq = TRUE, expected = TRUE, prop.r = FALSE, prop.c = FALSE)
+```
+
+카이제곱 검정 결과에서 p-값을 확인하여 자전거 구매 여부와 성별 간의 관계가 통계적으로 유의미한지 확인할 수 있습니다.
+
+```
+"자전거(anxiousness)와 성별(Gender)와의 연관관계 분석 "
+
+ 
+   Cell Contents
+|-------------------------|
+|                       N |
+|              Expected N |
+| Chi-square contribution |
+|         N / Table Total |
+|-------------------------|
+
+ 
+Total Observations in Table:  889 
+
+ 
+                    | DF$Gender 
+DF$`Purchased Bike` |    Female |      Male | Row Total | 
+--------------------|-----------|-----------|-----------|
+                 No |       218 |       238 |       456 | 
+                    |   225.692 |   230.308 |           | 
+                    |     0.262 |     0.257 |           | 
+                    |     0.245 |     0.268 |           | 
+--------------------|-----------|-----------|-----------|
+                Yes |       222 |       211 |       433 | 
+                    |   214.308 |   218.692 |           | 
+                    |     0.276 |     0.271 |           | 
+                    |     0.250 |     0.237 |           | 
+--------------------|-----------|-----------|-----------|
+       Column Total |       440 |       449 |       889 | 
+--------------------|-----------|-----------|-----------|
+
+ 
+Statistics for All Table Factors
+
+
+Pearson's Chi-squared test 
+------------------------------------------------------------
+Chi^2 =  1.065634     d.f. =  1     p =  0.3019336 
+
+Pearson's Chi-squared test with Yates' continuity correction 
+------------------------------------------------------------
+Chi^2 =  0.9315954     d.f. =  1     p =  0.3344487 
+
+```
+
+
+
+## 5. 로지스틱 회귀 분석
+
+학습 데이터와 테스트 데이터 분리
+데이터를 학습 데이터와 테스트 데이터로 분리하고 모델 학습을 준비합니다:
+
+```
+index <- caret::createDataPartition(y = DF$`Purchased Bike`, p = 0.8, list = FALSE)
+train <- DF[index,]
+test <- DF[-index,]
+```
+
+로지스틱 회귀 모델을 학습합니다:
+
+```
+m <- glm(formula = `Purchased Bike` ~ ., data = train, family = "binomial")
+summary(m)
+```
+
+```
+ "glm model m"
+
+Call:
+glm(formula = `Purchased Bike` ~ ., family = "binomial", data = train)
+
+Coefficients:
+                               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                  -6.782e-01  5.645e-01  -1.201  0.22959    
+`Marital Status`Single        8.222e-01  1.872e-01   4.393 1.12e-05 ***
+GenderMale                    9.021e-03  1.657e-01   0.054  0.95658    
+Income                        6.754e-06  5.288e-06   1.277  0.20152    
+Children                     -1.362e-01  6.595e-02  -2.065  0.03897 *  
+EducationGraduate Degree     -4.215e-01  2.624e-01  -1.607  0.10812    
+EducationHigh School          2.274e-02  3.072e-01   0.074  0.94099    
+EducationPartial College     -2.464e-01  2.621e-01  -0.940  0.34717    
+EducationPartial High School -5.671e-01  4.389e-01  -1.292  0.19626    
+OccupationManagement          1.784e-01  5.115e-01   0.349  0.72729    
+OccupationManual             -1.138e-01  3.347e-01  -0.340  0.73376    
+OccupationProfessional        8.442e-01  3.997e-01   2.112  0.03466 *  
+OccupationSkilled Manual      2.452e-01  3.200e-01   0.766  0.44355    
+`Home Owner`Yes               4.817e-01  2.068e-01   2.329  0.01986 *  
+Cars                         -3.367e-01  1.245e-01  -2.704  0.00685 ** 
+`Commute Distance`1-2 Miles  -4.481e-01  2.502e-01  -1.791  0.07329 .  
+`Commute Distance`10+ Miles  -1.711e+00  3.709e-01  -4.614 3.94e-06 ***
+`Commute Distance`2-5 Miles  -2.952e-01  2.621e-01  -1.126  0.26008    
+`Commute Distance`5-10 Miles -1.245e+00  3.079e-01  -4.042 5.30e-05 ***
+RegionNorth America           5.437e-02  2.654e-01   0.205  0.83771    
+RegionPacific                 1.017e+00  3.094e-01   3.288  0.00101 ** 
+Age                           1.020e-02  9.958e-03   1.024  0.30578    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 986.59  on 711  degrees of freedom
+Residual deviance: 873.31  on 690  degrees of freedom
+AIC: 917.31
+
+Number of Fisher Scoring iterations: 4
+```
+## 6. 변수 선택 (Backward Elimination)
+
+학습된 모델에서 불필요한 변수를 제거하기 위해 역방향 제거 방법을 사용합니다:
+
+```
+mback <- step(m, direction = "backward")
+```
+
+## 7. 모델 평가
+
+### 7-1. ROC 곡선
+
+ROC 곡선을 사용하여 모델의 성능을 시각화하고 적절한 CUT-OFF 값을 선택합니다:
+
+```
+install.packages("pROC")
+roc_c <- pROC::roc(predict_check$`Purchased Bike`, predict_check$predict_value)
+pROC::plot.roc(roc_c, col = "royalblue", print.auc = TRUE, max.auc.polygon = TRUE, print.thres = TRUE, print.thres.pch = 19, print.thres.col = "red", auc.polygon = TRUE, auc.polygon.col = "#D1F2EB")
+
+```
+![image](https://github.com/auspicious0/bike_buyers/assets/108572025/414a0572-34d0-4f25-b544-f728f755ce7c)
+
+### 7-2. 예측 및 성능 평가
+
+선택한 CUT-OFF 값으로 예측을 수행하고 모델의 성능을 혼돈 매트릭스를 통해 확인합니다:
+
+```
+predict_value <- predict(mback, test, type = "response") %>% tibble(predict_value = .)
+predict_check <- test %>% select(`Purchased Bike`) %>% dplyr::bind_cols(., predict_value)
+predict_cutoff_roc <- predict_check %>%
+  mutate(predict_biked = as.factor(ifelse(predict_value > 0.5136439, "Yes", "No")))
+
+# 혼돈 매트릭스를 통한 성능 평가
+caret::confusionMatrix(predict_cutoff_roc$`Purchased Bike`, predict_cutoff_roc$predict_biked)
+
+```
+
+```
+A tibble: 177 × 3
+Purchased Bike	predict_value	predict_biked
+<fct>	<dbl>	<fct>
+Yes	0.5228698	Yes
+Yes	0.5782981	Yes
+No	0.4999350	No
+No	0.4254288	No
+Yes	0.5846695	Yes
+Yes	0.5796278	Yes
+No	0.2024137	No
+Yes	0.5499326	Yes
+Yes	0.6366437	Yes
+Yes	0.8329877	Yes
+No	0.4634943	No
+Yes	0.5499326	Yes
+No	0.2385416	No
+Yes	0.4232865	No
+Yes	0.4739440	No
+No	0.4943569	No
+No	0.5533325	Yes
+No	0.3537212	No
+Yes	0.5605530	Yes
+Yes	0.8519412	Yes
+No	0.6782554	Yes
+Yes	0.7448223	Yes
+Yes	0.8518051	Yes
+No	0.4815053	No
+Yes	0.1969868	No
+Yes	0.2856157	No
+No	0.5076084	No
+No	0.2385416	No
+No	0.5785834	Yes
+Yes	0.5796278	Yes
+⋮	⋮	⋮
+No	0.2202885	No
+No	0.6198953	Yes
+No	0.4304286	No
+No	0.2766733	No
+No	0.3742456	No
+No	0.4560945	No
+Yes	0.1315284	No
+Yes	0.6996423	Yes
+No	0.3790706	No
+Yes	0.6996423	Yes
+No	0.6447875	Yes
+No	0.4660337	No
+Yes	0.6198953	Yes
+Yes	0.7359148	Yes
+No	0.1356468	No
+Yes	0.2202885	No
+No	0.2078664	No
+Yes	0.4417597	No
+No	0.3851596	No
+Yes	0.7145817	Yes
+No	0.2202885	No
+No	0.3112684	No
+No	0.3742456	No
+No	0.4378422	No
+No	0.5716155	Yes
+No	0.7123073	Yes
+Yes	0.2059617	No
+No	0.2031100	No
+No	0.2823118	No
+Yes	0.3698322	No
+```
+
+```
+Confusion Matrix and Statistics
+
+          Reference
+Prediction No Yes
+       No  68  23
+       Yes 35  51
+                                          
+               Accuracy : 0.6723          
+                 95% CI : (0.5979, 0.7409)
+    No Information Rate : 0.5819          
+    P-Value [Acc > NIR] : 0.00849         
+                                          
+                  Kappa : 0.3416          
+                                          
+ Mcnemar's Test P-Value : 0.14863         
+                                          
+            Sensitivity : 0.6602          
+            Specificity : 0.6892          
+         Pos Pred Value : 0.7473          
+         Neg Pred Value : 0.5930          
+             Prevalence : 0.5819          
+         Detection Rate : 0.3842          
+   Detection Prevalence : 0.5141          
+      Balanced Accuracy : 0.6747          
+                                          
+       'Positive' Class : No              
+                                  
+```
+
+정확도 (Accuracy): 0.6723
+
+전체 예측 중에서 올바르게 분류한 비율로, 0.6723 또는 67.23%입니다.(TP + TN) / (TP + TN + FP + FN)
+
+민감도 (Sensitivity): 0.6602
+
+실제 양성 중에서 올바르게 양성으로 분류된 비율로, 0.6602 또는 66.02%입니다.
+
+특이도 (Specificity): 0.6892
+
+실제 음성 중에서 올바르게 음성으로 분류된 비율로, 0.6892 또는 68.92%입니다.
+
+정밀도 (Precision): 0.7473
+
+정밀도는 모델이 양성으로 예측한 샘플 중에서 실제로 양성인 샘플의 비율을 나타냅니다. TP / (TP + FP)
+
+재현율 (Recall): 0.6602
+
+재현율은 실제로 양성인 샘플 중에서 모델이 양성으로 예측한 샘플의 비율을 나타냅니다. TP / (TP + FN)
+
+따라서 자전거를 살 것인지 어느 정도 유의미한 예측을 할 수 있었습니다. 예측의 정도가 크지 않아 신뢰도가 높진 않지만 어떤 병원이나 심각한 자료 분석을 수행하는 경우가 아니기 때문에 참고 정도의 자료로 작용할 수 있을 것으로 보입니다.
+
+
+## 8. 문의
+프로젝트에 관한 문의나 버그 리포트는 [이슈 페이지](https://github.com/auspicious0/bike_buyers/issues)를 통해 제출해주세요.
+
+보다 더 자세한 내용을 원하신다면 [보고서](https://github.com/auspicious0/bike_buyers/blob/main/%EB%A1%9C%EC%A7%80%EC%8A%A4%ED%8B%B1%ED%9A%8C%EA%B7%80_bike_buyers.ipynb) 를 확인해 주시기 바랍니다.
